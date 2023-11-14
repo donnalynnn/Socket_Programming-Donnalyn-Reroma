@@ -34,7 +34,7 @@ void handle_client(int client_socket, int player_number) {
 
     if (!valid_choice) {
         send(client_socket, "Invalid choice. Please choose rock, paper, or scissors.", sizeof("Invalid choice. Please choose rock, paper, or scissors."), 0);
-        close(client_socket);
+        closesocket(client_socket);
         return;
     }
 
@@ -57,7 +57,7 @@ void handle_client(int client_socket, int player_number) {
 
     if (!valid_choice) {
         send(client_socket, "Invalid opponent choice. Closing connection.", sizeof("Invalid opponent choice. Closing connection."), 0);
-        close(client_socket);
+        closesocket(client_socket);
         return;
     }
 
