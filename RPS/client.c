@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
+// #include <arpa/inet.h>
+#include <winsock2.h>
+#pragma comment(lib, "ws2_32.lib")
 #include <windows.h>
 
 #define PORT 5555
@@ -56,10 +58,18 @@ void play_game() {
     printf("%s\n", buffer);
 
     // Close the connection
-    close(client_socket);
+    closesocket(client_socket);
 }
 
 int main() {
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        perror("WSAStartup failed");
+        return EXIT_FAILURE;
+    }
     play_game();
+
+    // Cleanup Winsock
+    WSACleanup();
     return 0;
 }

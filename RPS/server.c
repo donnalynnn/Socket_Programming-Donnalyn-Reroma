@@ -3,8 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+// #include <arpa/inet.h>
+#include <winsock2.h>
+#pragma comment(lib, "ws2_32.lib")
+#include <windows.h>
 #include "rps.c"
 
 #define PORT 5555
@@ -68,9 +70,15 @@ void handle_client(int client_socket, int player_number) {
 }
 
 int main() {
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        perror("WSAStartup failed");
+        return EXIT_FAILURE;
+    }
+
     int server_socket, client_socket;
     struct sockaddr_in server_addr, client_addr;
-    socklen_t client_len = sizeof(client_addr);
+    int client_len = sizeof(client_addr);
 
     // Create socket
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -111,5 +119,8 @@ int main() {
         player_number++;
     }
 
+
+    // Cleanup Winsock
+    WSACleanup();
     return 0;
 }
