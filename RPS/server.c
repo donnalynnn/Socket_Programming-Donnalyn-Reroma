@@ -66,7 +66,7 @@ void handle_client(int client_socket, int player_number) {
     send(client_socket, result, sizeof(buffer), 0);
 
     // Close the connection
-    close(client_socket);
+    closesocket(client_socket);
 }
 
 int main() {
