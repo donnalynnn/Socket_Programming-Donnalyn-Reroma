@@ -76,32 +76,32 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    int server_socket, client_socket;
+    SOCKET server_socket, client_socket;
     struct sockaddr_in server_addr, client_addr;
     int client_len = sizeof(client_addr);
 
     // Create socket
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket == -1) {
+    if (server_socket == INVALID_SOCKET) {
         perror("Socket creation failed");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     // Prepare the server address structure
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY; // Use INADDR_ANY to bind to all available interfaces
 
     // Bind the socket
-    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
         perror("Binding failed");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     // Listen for incoming connections
-    if (listen(server_socket, 2) == -1) {
+    if (listen(server_socket, 2) == SOCKET_ERROR) {
         perror("Listening failed");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     printf("Server listening on port %d\n", PORT);
@@ -121,6 +121,7 @@ int main() {
 
 
     // Cleanup Winsock
+    closesocket(server_socket);
     WSACleanup();
     return 0;
 }
