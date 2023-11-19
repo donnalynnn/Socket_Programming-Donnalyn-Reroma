@@ -11,37 +11,30 @@
 void play_game(SOCKET client_socket) {
     char buffer[1024];
 
-    // Loop until '0' is entered
+    // Game loop
     while (1) {
-        // Receive and print instructions
+        // Receive instructions and make choices
         recv(client_socket, buffer, sizeof(buffer), 0);
         printf("%s\n", buffer);
 
-        // Get the first player's choice
+        // Get the player's choice
         char player_choice[1024];
-        printf("Your choice (rock/paper/scissors, enter '0' to exit): ");
-        scanf("%s", player_choice);
-
-        // Check if '0' is entered to exit the loop
-        if (player_choice[0] == '0') {
-            break;
-        }
-
+        printf("Your choice (rock=1/paper=2/scissors=3, enter '0' to exit): ");
+        fgets(player_choice, sizeof(player_choice), stdin);
         send(client_socket, player_choice, sizeof(player_choice), 0);
 
-        // Receive and print the acknowledgment
+        // Receive and print acknowledgment
         recv(client_socket, buffer, sizeof(buffer), 0);
         printf("%s\n", buffer);
-
-        // Get the second player's choice
-        printf("Opponent's choice: ");
-        scanf("%s", player_choice);
 
         // Check if '0' is entered to exit the loop
         if (player_choice[0] == '0') {
             break;
         }
 
+        // Get the opponent's choice
+        printf("Opponent's choice: ");
+        fgets(player_choice, sizeof(player_choice), stdin);
         send(client_socket, player_choice, sizeof(player_choice), 0);
 
         // Receive and print the result
@@ -73,7 +66,7 @@ int main() {
     // Prepare the server address structure
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr("192.168.101.6"); // Change to the server's IP address
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     // Connect to the server
     if (connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
@@ -81,7 +74,7 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    // Play the game until '0' is entered
+    // Play the game
     play_game(client_socket);
 
     // Cleanup Winsock

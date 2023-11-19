@@ -1,127 +1,133 @@
-// server.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-// #include <arpa/inet.h>
 #include <winsock2.h>
+#include <time.h>  // Include for srand and rand
 #pragma comment(lib, "ws2_32.lib")
-#include <windows.h>
-#include "rps.c"
 
 #define PORT 5555
 
-void handle_client(int client_socket, int player_number) {
+// Enumeration for game choices
+enum GameChoice {
+    ROCK = 1,
+    PAPER = 2,
+    SCISSORS = 3
+};
+
+// Structure to hold the game state
+struct GameState {
+    int player1_choice;
+    int player2_choice;
+};
+
+// Function to determine the game result
+int determine_game_result(int choice1, int choice2) {
+    // Your game logic goes here
+    // Return 0 for a draw, 1 for player 1 wins, 2 for player 2 wins
+    if (choice1 == choice2) {
+        return 0; // Draw
+    } else if ((choice1 == ROCK && choice2 == SCISSORS) ||
+               (choice1 == PAPER && choice2 == ROCK) ||
+               (choice1 == SCISSORS && choice2 == PAPER)) {
+        return 1; // Player 1 wins
+    } else {
+        return 2; // Player 2 wins
+    }
+}
+
+// Function to generate a random choice for the server
+int generate_server_choice() {
+    // Seed the random number generator with the current time
+    srand((unsigned int)time(NULL));
+
+    // Generate a random number between 1 and 3
+    return (rand() % 3) + 1;
+}
+
+// Function declaration
+void handle_client(SOCKET client_socket, int player_number);
+
+// Rest of the code remains the same...
+
+void handle_client(SOCKET client_socket, int player_number) {
     char buffer[1024];
-    const char* choices[] = {"rock", "paper", "scissors"};
+    struct GameState game_state;
 
-    // Send instructions to the client
-    send(client_socket, "Welcome! Choose rock, paper, or scissors.", sizeof("Welcome! Choose rock, paper, or scissors."), 0);
+    // Game loop
+    while (1) {
+        // Inform players to make choices
+        send(client_socket, "Make your choice (rock=1/paper=2/scissors=3, enter '0' to exit):", sizeof(buffer), 0);
 
-    // Receive the player's choice
-    recv(client_socket, buffer, sizeof(buffer), 0);
-    char player_choice[1024];
-    strcpy(player_choice, buffer);
+        // Get the player's choice
+        recv(client_socket, buffer, sizeof(buffer), 0);
+        game_state.player1_choice = atoi(buffer);
 
-    // Validate the choice
-    int valid_choice = 0;
-    for (int i = 0; i < 3; ++i) {
-        if (strcmp(player_choice, choices[i]) == 0) {
-            valid_choice = 1;
+        // Check if '0' is entered to exit the loop
+        if (game_state.player1_choice == 0) {
             break;
         }
-    }
 
-    if (!valid_choice) {
-        send(client_socket, "Invalid choice. Please choose rock, paper, or scissors.", sizeof("Invalid choice. Please choose rock, paper, or scissors."), 0);
-        closesocket(client_socket);
-        return;
-    }
+        // Acknowledge the client's choice
+        send(client_socket, "Choice received. Waiting for the opponent...", sizeof(buffer), 0);
 
-    // Notify the player about their choice
-    send(client_socket, "Waiting for the opponent...", sizeof("Waiting for the opponent..."), 0);
+        // Inform the client that the server is making a choice
+        send(client_socket, "Server is making a choice...", sizeof(buffer), 0);
 
-    // Receive the opponent's choice
-    recv(client_socket, buffer, sizeof(buffer), 0);
-    char opponent_choice[1024];
-    strcpy(opponent_choice, buffer);
+        // Generate the server's choice
+        game_state.player2_choice = generate_server_choice();
 
-    // Validate the opponent's choice
-    valid_choice = 0;
-    for (int i = 0; i < 3; ++i) {
-        if (strcmp(opponent_choice, choices[i]) == 0) {
-            valid_choice = 1;
-            break;
+        // Send the server's choice to the client
+        sprintf(buffer, "Server's choice: %d", game_state.player2_choice);
+        send(client_socket, buffer, sizeof(buffer), 0);
+
+        // Process game logic and determine the result
+        int result = determine_game_result(game_state.player1_choice, game_state.player2_choice);
+
+        // Send the result to both players
+        if (result == 0) {
+            send(client_socket, "It's a draw!", sizeof(buffer), 0);
+        } else if (result == 1) {
+            send(client_socket, "You win!", sizeof(buffer), 0);
+        } else {
+            send(client_socket, "Server wins!", sizeof(buffer), 0);
+        }
+
+        // Allow the server to input its choice
+        send(client_socket, "Do you want the server to play? (1 for Yes, 0 for No):", sizeof(buffer), 0);
+
+        // Receive client's choice about the server playing
+        int play_as_server;
+        recv(client_socket, buffer, sizeof(buffer), 0);
+        play_as_server = atoi(buffer);
+
+        if (play_as_server == 1) {
+            // Inform the client that the server is playing
+            send(client_socket, "Server is playing.", sizeof(buffer), 0);
+
+            // Send the server's choices
+            send(client_socket, "Server's choices:", sizeof(buffer), 0);
+
+            // Generate the server's choice
+            game_state.player2_choice = generate_server_choice();
+
+            // Send the server's choice to the client
+            sprintf(buffer, "Server's choice: %d", game_state.player2_choice);
+            send(client_socket, buffer, sizeof(buffer), 0);
+
+            // Process game logic and determine the result
+            result = determine_game_result(game_state.player1_choice, game_state.player2_choice);
+
+            // Send the result to both players
+            if (result == 0) {
+                send(client_socket, "It's a draw!", sizeof(buffer), 0);
+            } else if (result == 1) {
+                send(client_socket, "You win!", sizeof(buffer), 0);
+            } else {
+                send(client_socket, "Server wins!", sizeof(buffer), 0);
+            }
         }
     }
-
-    if (!valid_choice) {
-        send(client_socket, "Invalid opponent choice. Closing connection.", sizeof("Invalid opponent choice. Closing connection."), 0);
-        closesocket(client_socket);
-        return;
-    }
-
-    // Determine the winner and send the result to the player
-    const char* result = determine_winner(player_choice, opponent_choice);
-    send(client_socket, result, sizeof(buffer), 0);
 
     // Close the connection
     closesocket(client_socket);
-}
-
-int main() {
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        perror("WSAStartup failed");
-        return EXIT_FAILURE;
-    }
-
-    SOCKET server_socket, client_socket;
-    struct sockaddr_in server_addr, client_addr;
-    int client_len = sizeof(client_addr);
-
-    // Create socket
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket == INVALID_SOCKET) {
-        perror("Socket creation failed");
-        return EXIT_FAILURE;
-    }
-
-    // Prepare the server address structure
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = INADDR_ANY; // Use INADDR_ANY to bind to all available interfaces
-
-    // Bind the socket
-    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
-        perror("Binding failed");
-        return EXIT_FAILURE;
-    }
-
-    // Listen for incoming connections
-    if (listen(server_socket, 2) == SOCKET_ERROR) {
-        perror("Listening failed");
-        return EXIT_FAILURE;
-    }
-
-    printf("Server listening on port %d\n", PORT);
-
-    int player_number = 1;
-
-    while (1) {
-        // Accept a connection
-        client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_len);
-        printf("Connection accepted for player %d\n", player_number);
-
-        // Handle the client in a separate function
-        handle_client(client_socket, player_number);
-
-        player_number++;
-    }
-
-
-    // Cleanup Winsock
-    closesocket(server_socket);
-    WSACleanup();
-    return 0;
 }
